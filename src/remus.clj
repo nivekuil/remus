@@ -19,11 +19,7 @@
 
   (:require
    [remus.rome :as rome]
-   [remus.http :as http]
-
-   [clojure.java.io :as io]
-
-   [clj-http.client :as client])
+   [clojure.java.io :as io])
 
   (:import
    java.io.InputStream))
@@ -52,49 +48,3 @@
   [^String path & [opt-rome]]
   (let [stream (-> path io/as-file io/input-stream)]
     (parse-stream stream opt-rome)))
-
-
-(defn parse-http-resp
-  "
-  Parse an HTTP response produced by the `clj-http` client
-  (`aleph.http` might also work). Most of the Rome flags
-  come from the HTTP headers, but you may redefine them
-  in the `opt-rome` map.
-  "
-  [http-resp & [opt-rome]]
-
-  (let [{:keys [body]} http-resp
-
-        content-type (http/get-content-type http-resp)
-        encoding (http/get-encoding http-resp)
-
-        opt (merge {:content-type content-type
-                    :encoding encoding}
-                   opt-rome)]
-
-    (when (and (http/response-200? http-resp)
-               (http/response-xml? http-resp))
-      (-> body
-          (rome/make-reader opt)
-          (rome/reader->feed)))))
-
-
-(defn parse-url
-  "
-  Parse feed from a URL. Returns a map of the `:response`
-  and `:feed` keys so you can access the response, e.g.
-  to save some of the headers.
-
-  The feed will only be parsed when the HTTP status is 200
-  and the content type is XML-friendly (see the possible values
-  in the `remus.http` namespace).
-
-  The `opt-http` parameter is a map of `clj-http/aleph` options
-  which gets merged with the defaults. The `:as` parameters always
-  becomes `:stream` to reuse the `parse-stream` function.
-  "
-  [url & [opt-http opt-rome]]
-  (let [opt (merge opt-http http/opt-default)
-        resp (client/get url opt)]
-    {:response resp
-     :feed (parse-http-resp resp opt-rome)}))
